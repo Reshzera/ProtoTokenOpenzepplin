@@ -1,4 +1,7 @@
-import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
+import {
+  loadFixture,
+  time,
+} from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
@@ -67,7 +70,7 @@ describe("ProtoToken", function () {
     expect(otherAccountBallance).to.equal(amount);
   });
 
-  it("Should not transfer tokens if sender has not enough tokens", async function () {
+  it("Should NOT transfer tokens if sender has not enough tokens", async function () {
     const { protoTokenContract, otherAccount } = await loadFixture(
       deployOneYearLockFixture
     );
@@ -76,7 +79,10 @@ describe("ProtoToken", function () {
 
     await expect(
       protoTokenContract.transfer(otherAccount.address, amount)
-    ).to.be.revertedWith("Insufficient balance");
+    ).to.be.revertedWithCustomError(
+      protoTokenContract,
+      "ERC20InsufficientBalance"
+    );
   });
 
   it("Should approve tokens", async function () {
@@ -133,17 +139,18 @@ describe("ProtoToken", function () {
   });
 
   it("Should NOT transferFrom tokens (BALANCE)", async function () {
-    const { protoTokenContract, otherAccount } = await loadFixture(
+    const { protoTokenContract, otherAccount, owner } = await loadFixture(
       deployOneYearLockFixture
     );
     const otherAccountInstance = protoTokenContract.connect(otherAccount);
+    await otherAccountInstance.approve(owner.address, 1n);
+
     await expect(
-      otherAccountInstance.transferFrom(
-        otherAccount.address,
-        otherAccount.address,
-        10n
-      )
-    ).to.revertedWith("Insufficient balance");
+      protoTokenContract.transferFrom(otherAccount.address, owner.address, 1n)
+    ).to.revertedWithCustomError(
+      protoTokenContract,
+      "ERC20InsufficientBalance"
+    );
   });
 
   it("Should NOT transferFrom tokens (ALLOWANCE)", async function () {
@@ -157,6 +164,81 @@ describe("ProtoToken", function () {
         otherAccount.address,
         10n
       )
-    ).to.revertedWith("Insufficient Allowance");
+    ).to.revertedWithCustomError(
+      protoTokenContract,
+      "ERC20InsufficientAllowance"
+    );
+  });
+
+  it("Should mint once", async function () {
+    const { protoTokenContract, owner } = await loadFixture(
+      deployOneYearLockFixture
+    );
+    const amount = 100n;
+    await protoTokenContract.setMintAmount(amount);
+
+    await protoTokenContract.mint();
+
+    const ownerBallance = await protoTokenContract.balanceOf(owner.address);
+
+    expect(ownerBallance).to.equal(1000n * 10n ** 18n + amount);
+  });
+
+  it("Should NOT mint (TWICE IN A ROW)", async function () {
+    const { protoTokenContract } = await loadFixture(deployOneYearLockFixture);
+    const amount = 100n;
+    await protoTokenContract.setMintAmount(amount);
+    await protoTokenContract.mint();
+
+    await expect(protoTokenContract.mint()).to.revertedWith(
+      "You cannot mint twice in a row."
+    );
+  });
+  it("Should NOT mint (NOT MINT AMOUNT)", async function () {
+    const { protoTokenContract } = await loadFixture(deployOneYearLockFixture);
+
+    await expect(protoTokenContract.mint()).to.revertedWith(
+      "Minting is not enabled"
+    );
+  });
+
+  it("Should change mint delay", async function () {
+    const { protoTokenContract, owner } = await loadFixture(
+      deployOneYearLockFixture
+    );
+    const delay = 60 * 60 * 24 * 2;
+    const amount = 100n;
+    await protoTokenContract.setMintDelay(delay);
+    await protoTokenContract.setMintAmount(amount);
+
+    await protoTokenContract.mint();
+
+    await time.increase(60 * 60 * 24 * 3);
+
+    await protoTokenContract.mint();
+
+    const ownerBallance = await protoTokenContract.balanceOf(owner.address);
+
+    expect(ownerBallance).to.equal(1000n * 10n ** 18n + amount * 2n);
+  });
+
+  it("Should NOT change mint delay (NOT OWNER)", async function () {
+    const { protoTokenContract, otherAccount } = await loadFixture(
+      deployOneYearLockFixture
+    );
+    const delay = 60 * 60 * 24 * 2;
+    await expect(
+      protoTokenContract.connect(otherAccount).setMintDelay(delay)
+    ).to.revertedWith("You do not have permission");
+  });
+
+  it("Should NOT change mint amount (NOT OWNER)", async function () {
+    const { protoTokenContract, otherAccount } = await loadFixture(
+      deployOneYearLockFixture
+    );
+    const amount = 100n;
+    await expect(
+      protoTokenContract.connect(otherAccount).setMintAmount(amount)
+    ).to.revertedWith("You do not have permission");
   });
 });

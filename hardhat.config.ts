@@ -20,6 +20,13 @@ const config: HardhatUserConfig = {
         mnemonic: process.env.SEPOLIA_MNEMONIC,
       },
     },
+    bsctest: {
+      url: process.env.BSC_TESNET_URL,
+      chainId: 97,
+      accounts: {
+        mnemonic: process.env.SEPOLIA_MNEMONIC,
+      },
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,

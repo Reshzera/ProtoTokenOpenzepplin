@@ -4,7 +4,8 @@
     "test": "hardhat coverage",
     "start": "hardhat node",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-    "deploy:dev": "hardhat run scripts/deploy.ts --network local"
+    "deploy:dev": "hardhat run scripts/deploy.ts --network local",
+    "deploy:bsc": "hardhat run scripts/deploy.ts --network bsctest"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
@@ -28,6 +29,7 @@
     "typescript": ">=4.5.0"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
     "dotenv": "^16.4.5"
   }
 }
