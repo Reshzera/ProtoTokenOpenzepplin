@@ -177,7 +177,7 @@ describe("ProtoToken", function () {
     const amount = 100n;
     await protoTokenContract.setMintAmount(amount);
 
-    await protoTokenContract.mint();
+    await protoTokenContract.mint(owner.address);
 
     const ownerBallance = await protoTokenContract.balanceOf(owner.address);
 
@@ -185,21 +185,34 @@ describe("ProtoToken", function () {
   });
 
   it("Should NOT mint (TWICE IN A ROW)", async function () {
-    const { protoTokenContract } = await loadFixture(deployOneYearLockFixture);
+    const { protoTokenContract, owner } = await loadFixture(
+      deployOneYearLockFixture
+    );
     const amount = 100n;
     await protoTokenContract.setMintAmount(amount);
-    await protoTokenContract.mint();
+    await protoTokenContract.mint(owner.address);
 
-    await expect(protoTokenContract.mint()).to.revertedWith(
+    await expect(protoTokenContract.mint(owner.address)).to.revertedWith(
       "You cannot mint twice in a row."
     );
   });
   it("Should NOT mint (NOT MINT AMOUNT)", async function () {
-    const { protoTokenContract } = await loadFixture(deployOneYearLockFixture);
+    const { protoTokenContract, owner } = await loadFixture(
+      deployOneYearLockFixture
+    );
 
-    await expect(protoTokenContract.mint()).to.revertedWith(
+    await expect(protoTokenContract.mint(owner.address)).to.revertedWith(
       "Minting is not enabled"
     );
+  });
+  it("Should MINT mint (NOT THE OWNER)", async function () {
+    const { protoTokenContract, otherAccount } = await loadFixture(
+      deployOneYearLockFixture
+    );
+
+    await expect(
+      protoTokenContract.connect(otherAccount).mint(otherAccount.address)
+    ).to.revertedWith("You do not have permission");
   });
 
   it("Should change mint delay", async function () {
@@ -211,11 +224,11 @@ describe("ProtoToken", function () {
     await protoTokenContract.setMintDelay(delay);
     await protoTokenContract.setMintAmount(amount);
 
-    await protoTokenContract.mint();
+    await protoTokenContract.mint(owner.address);
 
     await time.increase(60 * 60 * 24 * 3);
 
-    await protoTokenContract.mint();
+    await protoTokenContract.mint(owner.address);
 
     const ownerBallance = await protoTokenContract.balanceOf(owner.address);
 
